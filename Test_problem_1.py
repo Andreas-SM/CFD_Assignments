@@ -63,12 +63,13 @@ alpha_cc = np.where(I == 0, alpha_liq, alpha_wall)
 # ---------- FORWARD EULERO ----------
 print('-- Imposing forward eulero conditinos')
 alpha_max = alpha_liq
-dt_max = (1.0 / (2.0 * alpha_max * (1.0 / dx**2 + 1.0 / dy**2)))*0.95 # safety factor of 0.95
+dt_max = (1.0 / (2.0 * alpha_max * (1.0 / dx**2 + 1.0 / dy**2)))    # safety factor of 0.95 to avoid numericall error
+                                                                    # the dt_max per se is at the limit of the stability region
 # dt = 0.8 * dt_max   # safety factor
 
 t_end = 50.0
 # nt = int(np.ceil(t_end / dt))
-nt = int(np.ceil(t_end / dt_max))
+nt = int(np.ceil((t_end)/ dt_max))
 
 # notable time or space coordinates
 save_times = [1.0, 5.0, 15.0, 50.0]
@@ -76,7 +77,7 @@ saved_fields = {}
 
 c = np.zeros((Ny + 2, Nx + 2)) # define the concentration grid (the points where we evaluate the concentration)
 
-# define alpha
+# define alphas
 print('-- Defining alpha')
 alpha = np.zeros((Ny + 2, Nx + 2))
 alpha[1:Ny+1, 1:Nx+1] = alpha_cc # only in the inner grid, no gost cells with alpha
@@ -124,12 +125,36 @@ for n in range(nt):
             c[j, i] = c_old[j, i] + dt_max * (diff_x + diff_y)
     t += dt_max
 
+    # sub cycle to calculate the diagnostic wuatity, i.e. the diffusion flux
+    diagnostic_quantity = np.zeros((Ny, Nx)) 
+    c_in = c[1:Ny+1, 1:Nx+1]
+
+    for j in range(1, Ny - 1):
+        for i in range(1, Nx - 1):
+            if (
+                I[j, i] == 0
+                and I[j, i + 1] == 0
+                and I[j, i - 1] == 0
+                and I[j + 1, i] == 0
+                and I[j - 1, i] == 0
+            ):
+                dc_dx = (c_in[j, i + 1] - c_in[j, i - 1]) / (2.0 * dx)
+                dc_dy = (c_in[j + 1, i] - c_in[j - 1, i]) / (2.0 * dy)
+
+                qx = -alpha_cc[j, i] * dc_dx
+                qy = -alpha_cc[j, i] * dc_dy
+
+                diagnostic_quantity[j, i] = np.sqrt(qx**2 + qy**2)
+            else:
+                diagnostic_quantity[j, i] = 0.0
+    maze_walls = np.ma.masked_where(I == 0, I)
+
     # save requested snapshots
     for ts in save_times:
-        if ts not in saved_fields and t >= ts:
+        if ts not in saved_fields and (t >= ts or t==t_end):
             saved_fields[ts] = c[1:Ny+1, 1:Nx+1].copy()
 
-    skip = 7500
+    """skip = 7500
     ipause = 0.01
     if n % skip == 0:
         print(t)
@@ -157,9 +182,32 @@ for n in range(nt):
         plt.ylabel("y")
         plt.title("Transient concentration")
         plt.pause(ipause)
-        plt.show()
-plt.show()
+        #plt.show()
+        plt.figure()
+        im = plt.imshow(
+            diagnostic_quantity,
+            origin="lower",
+            extent=[0.0, Lx, 0.0, Ly],
+            cmap="magma",
+            aspect="equal",
+        )
+        plt.imshow(
+            maze_walls,
+            origin="lower",
+            extent=[0.0, Lx, 0.0, Ly],
+            cmap="gray_r",
+            alpha=0.15,
+            interpolation="nearest",
+            aspect="equal",
+        )
+        plt.colorbar(im, label=r"$|\mathbf{q}| = \alpha |\nabla c|$")
+        plt.xlabel("x")
+        plt.ylabel("y")
+        plt.title("Steady diffusive-flux magnitude")
+        plt.tight_layout()
+        plt.show()"""
 
+plt.show()
 
 
 #  ---------- PLOT SAVED TIMES-SHOT --------
@@ -194,4 +242,53 @@ for ts in save_times:
         plt.title(f"c(x,y,t) at t ≈ {ts}")
         plt.tight_layout()
         plt.show()
-    
+
+# ------------- FINAL DIAGNOSYS -------------
+diagnostic_quantity = np.zeros((Ny, Nx))
+
+c_in = c[1:Ny+1, 1:Nx+1]
+
+for j in range(1, Ny - 1):
+    for i in range(1, Nx - 1):
+        if (
+            I[j, i] == 0
+            and I[j, i + 1] == 0
+            and I[j, i - 1] == 0
+            and I[j + 1, i] == 0
+            and I[j - 1, i] == 0
+        ):
+            dc_dx = (c_in[j, i + 1] - c_in[j, i - 1]) / (2.0 * dx)
+            dc_dy = (c_in[j + 1, i] - c_in[j - 1, i]) / (2.0 * dy)
+
+            qx = -alpha_cc[j, i] * dc_dx
+            qy = -alpha_cc[j, i] * dc_dy
+
+            diagnostic_quantity[j, i] = np.sqrt(qx**2 + qy**2)
+        else:
+            diagnostic_quantity[j, i] = 0.0
+
+maze_walls = np.ma.masked_where(I == 0, I)
+
+plt.figure()
+im = plt.imshow(
+    diagnostic_quantity,
+    origin="lower",
+    extent=[0.0, Lx, 0.0, Ly],
+    cmap="magma",
+    aspect="equal",
+)
+plt.imshow(
+    maze_walls,
+    origin="lower",
+    extent=[0.0, Lx, 0.0, Ly],
+    cmap="gray_r",
+    alpha=0.15,
+    interpolation="nearest",
+    aspect="equal",
+)
+plt.colorbar(im, label=r"$|\mathbf{q}| = \alpha |\nabla c|$")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.title("Steady diffusive-flux magnitude")
+plt.tight_layout()
+plt.show()
