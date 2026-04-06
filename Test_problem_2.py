@@ -120,7 +120,13 @@ def solver(N):
     print(f"\nReached steady state at about t = {t:.5f}")
     print(f"Final err = {err:.3e}, iterations = {it}")
 
+    dT_dy_bottom = ((T[2, i_mid]+T[2, i_mid-1])/2 - (T[1, i_mid]+T[1, i_mid-1])/2)/dy
+
+    dT_dy_top = ((T[-2, i_mid]+T[-2, i_mid-1])/2 - (T[-3, i_mid]+T[-3, i_mid-1])/2)/dy
+
     return{
+        "dx" : dx,
+        "dy" : dy,
         "T" : T,
         "uc" : u_cells,
         "vc" : v_cells,
@@ -135,7 +141,9 @@ def solver(N):
         "it": it,
         "t": t,
         "err_hist" : err_hist,
-        "time_hist" : time_hist
+        "time_hist" : time_hist,
+        "dT/dy_bottom" : dT_dy_bottom,
+        "dT/dy_top" : dT_dy_top
     }
 
 # ---------------------------------------------
@@ -147,18 +155,30 @@ T_left = 1.0
 T_right = 0.0
 Lx = Ly = 1.0
 
-N_single=20
+N_single=10
 results_single={}
 
-N_multiple = [20, 40, 60, 80]
+N_multiple = [20, 40, 60, 80, 100, 120]
 
-mode = "single"   # or "multiple"
+mode = "multiple"   # "single" or "multiple"
 
 if mode == "single":
 
     #---------------- SINGLE GRID DIMENSION  ----------------
 
     results_single=solver(N_single)
+
+    print(results_single['dT/dy_bottom'])
+    print(results_single['dy'])
+    print((results_single['T'][1, results_single['i_mid']]+results_single['T'][1, results_single['i_mid']-1])/2)
+    print((results_single['T'][2, results_single['i_mid']]+results_single['T'][2, results_single['i_mid']-1])/2)
+    print(results_single['i_mid'])
+
+    print(results_single['dT/dy_top'])
+    print(results_single['dy'])
+    print((results_single['T'][-2, results_single['i_mid']]+results_single['T'][-1, results_single['i_mid']-1])/2)
+    print((results_single['T'][-3, results_single['i_mid']]+results_single['T'][-2, results_single['i_mid']-1])/2)
+    print(results_single['i_mid'])
 
     plt.figure()
     plt.imshow(
@@ -187,19 +207,19 @@ if mode == "single":
 
     # ---------------- CENTRELINE PROFILES ---------------- 
     plt.figure()
-    plt.plot(results_single['x'], (results_single['T'][results_single['j_mid'], 1:-1]+results_single['T'][results_single['j_mid']-1, 1:-1])/2, marker='o')
+    plt.plot(results_single['x'], (results_single['T'][results_single['j_mid'], 1:-1] + results_single['T'][results_single['j_mid']-1, 1:-1])/2, marker='o')
     plt.xlabel("x")
     plt.ylabel("T")
-    plt.title(f"Centreline profile: T(x, y={((results_single['y'][results_single['j_mid']-1]+results_single['y'][results_single['j_mid']-2])/2):.3f})")
+    plt.title(f"Centreline profile: T(x, y={((results_single['y'][results_single['j_mid']-1] + results_single['y'][results_single['j_mid']-2])/2):.3f})")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
     plt.figure()
-    plt.plot(results_single['y'], (results_single['T'][1:-1, results_single['i_mid']]+results_single['T'][1:-1, results_single['i_mid']-1])/2, marker='o')
+    plt.plot(results_single['y'], (results_single['T'][1:-1, results_single['i_mid']] + results_single['T'][1:-1, results_single['i_mid']-1])/2, marker='o')
     plt.xlabel("y")
     plt.ylabel("T")
-    plt.title(f"Centreline profile: T(x={((results_single['x'][results_single['i_mid']-1]+results_single['x'][results_single['i_mid']-2])/2):.3f}, y)")
+    plt.title(f"Centreline profile: T(x={((results_single['x'][results_single['i_mid']-2] + results_single['x'][results_single['i_mid']-1])/2):.3f}, y)")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
@@ -238,3 +258,35 @@ elif mode == "multiple":
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+    # ---------------- dT_dy vs N ----------------
+    N_vector = []
+    dT_dy_bottom_vector= []
+    dT_dy_top_vector = []
+
+    for N in N_multiple:
+        N_vector.append(N)
+        dT_dy_bottom_vector.append(results[N]['dT/dy_bottom'])
+        dT_dy_top_vector.append(results[N]['dT/dy_top'])
+
+    # ---------------- PLOT 3: dT_dy_bottom vs N ----------------
+    plt.figure(figsize=(7,5))
+    plt.plot(N_vector, dT_dy_bottom_vector, marker='o')
+    plt.xlabel("N")
+    plt.ylabel(r"$\partial T/\partial y$ at bottom")
+    plt.title(r"Bottom wall derivative vs number of elements")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    # ---------------- PLOT 4: dT_dy_top vs N ----------------
+    plt.figure(figsize=(7,5))
+    plt.plot(N_vector, dT_dy_top_vector, marker='o')
+    plt.xlabel("N")
+    plt.ylabel(r"$\partial T/\partial y$ at top")
+    plt.title(r"Top wall derivative vs number of elements")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+

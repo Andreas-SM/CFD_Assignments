@@ -144,7 +144,7 @@ for n in range(nt):
                 qx = -alpha_cc[j, i] * dc_dx
                 qy = -alpha_cc[j, i] * dc_dy
 
-                diagnostic_quantity[j, i] = np.sqrt(qx**2 + qy**2)
+                diagnostic_quantity[j, i] = (qx**2 + qy**2) #np.sqrt
             else:
                 diagnostic_quantity[j, i] = 0.0
     maze_walls = np.ma.masked_where(I == 0, I)
@@ -206,7 +206,6 @@ for n in range(nt):
         plt.title("Steady diffusive-flux magnitude")
         plt.tight_layout()
         plt.show()"""
-
 plt.show()
 
 
