@@ -120,10 +120,6 @@ def solver(N):
     print(f"\nReached steady state at about t = {t:.5f}")
     print(f"Final err = {err:.3e}, iterations = {it}")
 
-    dT_dy_bottom = ((T[2, i_mid]+T[2, i_mid-1])/2 - (T[1, i_mid]+T[1, i_mid-1])/2)/dy
-
-    dT_dy_top = ((T[-2, i_mid]+T[-2, i_mid-1])/2 - (T[-3, i_mid]+T[-3, i_mid-1])/2)/dy
-
     return{
         "dx" : dx,
         "dy" : dy,
@@ -141,9 +137,7 @@ def solver(N):
         "it": it,
         "t": t,
         "err_hist" : err_hist,
-        "time_hist" : time_hist,
-        "dT/dy_bottom" : dT_dy_bottom,
-        "dT/dy_top" : dT_dy_top
+        "time_hist" : time_hist
     }
 
 # ---------------------------------------------
@@ -158,7 +152,7 @@ Lx = Ly = 1.0
 N_single=10
 results_single={}
 
-N_multiple = [20, 40, 60, 80, 100, 120]
+N_multiple = [50, 75, 100, 125, 150, 175, 200]
 
 mode = "multiple"   # "single" or "multiple"
 
@@ -167,18 +161,6 @@ if mode == "single":
     #---------------- SINGLE GRID DIMENSION  ----------------
 
     results_single=solver(N_single)
-
-    print(results_single['dT/dy_bottom'])
-    print(results_single['dy'])
-    print((results_single['T'][1, results_single['i_mid']]+results_single['T'][1, results_single['i_mid']-1])/2)
-    print((results_single['T'][2, results_single['i_mid']]+results_single['T'][2, results_single['i_mid']-1])/2)
-    print(results_single['i_mid'])
-
-    print(results_single['dT/dy_top'])
-    print(results_single['dy'])
-    print((results_single['T'][-2, results_single['i_mid']]+results_single['T'][-1, results_single['i_mid']-1])/2)
-    print((results_single['T'][-3, results_single['i_mid']]+results_single['T'][-2, results_single['i_mid']-1])/2)
-    print(results_single['i_mid'])
 
     plt.figure()
     plt.imshow(
@@ -229,10 +211,16 @@ elif mode == "multiple":
     #---------------- MULTPLE GRID DIMENSION  ----------------
 
     results = {}
+    dT_dy_bottom ={}
+    dT_dy_top ={}
 
     for N in N_multiple:
         print(f"Running N = {N}")
         results[N] = solver(N)
+        #---------------- ADDED FOR DERIVATIVE ESTIMATION  ----------------
+        dT_dy_bottom[N] = ((results[N]['T'][2, results[N]['i_mid']]+results[N]['T'][2, results[N]['i_mid']-1])/2 - (results[N]['T'][1, results[N]['i_mid']]+results[N]['T'][1, results[N]['i_mid']-1])/2)/results[N]['dy']
+        dT_dy_top[N] = ((results[N]['T'][-2, results[N]['i_mid']]+results[N]['T'][-2, results[N]['i_mid']-1])/2 - (results[N]['T'][-3, results[N]['i_mid']]+results[N]['T'][-3, results[N]['i_mid']-1])/2)/results[N]['dy']
+        #---------------- --------------------------------  ----------------
         print(f"   iterations = {results[N]['it']}, final err = {results[N]['err']:.3e}")
 
     # ---------------- PLOT 1: T(x, y=0.5) ----------------
@@ -259,6 +247,7 @@ elif mode == "multiple":
     plt.tight_layout()
     plt.show()
 
+    #---------------- ADDED FOR DERIVATIVE ESTIMATION  ----------------
     # ---------------- dT_dy vs N ----------------
     N_vector = []
     dT_dy_bottom_vector= []
@@ -266,8 +255,8 @@ elif mode == "multiple":
 
     for N in N_multiple:
         N_vector.append(N)
-        dT_dy_bottom_vector.append(results[N]['dT/dy_bottom'])
-        dT_dy_top_vector.append(results[N]['dT/dy_top'])
+        dT_dy_bottom_vector.append(dT_dy_bottom[N])
+        dT_dy_top_vector.append(dT_dy_top[N])
 
     # ---------------- PLOT 3: dT_dy_bottom vs N ----------------
     plt.figure(figsize=(7,5))
@@ -288,5 +277,4 @@ elif mode == "multiple":
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
-
+    #---------------- --------------------------------  ----------------
